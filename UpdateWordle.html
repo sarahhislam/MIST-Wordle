@@ -1,0 +1,1224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+  <title>MIST Wordle 🌿</title>
+
+  <!-- 🌸 Fonts -->
+  <link
+    href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;700&family=Quicksand:wght@500&display=swap"
+    rel="stylesheet"
+  />
+
+  <style>
+    /* ======================
+       Theme variables (flat colors, no ombre)
+       ====================== */
+    :root{
+      --bg: #f6fff8;
+      --text: #21332a;
+      --muted: #6a8b7a;
+      --accent: #74c69d;
+      --tile-border: #95d5b2;
+      --tile-correct: #74c69d;
+      --tile-present: #f4d35e;
+      --tile-absent: #d8e2dc;
+      --key-bg: #e6f1ea;
+      --key-hover: #cce3de;
+      --special-key: #95d5b2;
+      --button: #74c69d;
+      --button-hover: #52b788;
+      --mist-color: rgba(255,255,255,0.12);
+    }
+
+    [data-theme="dark"]{
+      --bg: #121212;
+      --text: #f0f0f0;
+      --muted: #888;
+      --accent: #74c69d;
+      --tile-border: #3a5a40;
+      --tile-correct: #74c69d;
+      --tile-present: #f4d35e;
+      --tile-absent: #555;
+      --key-bg: #333;
+      --key-hover: #52734d;
+      --special-key: #74c69d;
+      --button: #52734d;
+      --button-hover: #74c69d;
+    }
+
+    /* ======================
+       Base layout & typography
+       ====================== */
+    html,body { height:100%; margin:0; }
+
+    body{
+      font-family: "Poppins","Quicksand",sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:flex-start;
+      overflow-x:hidden;
+      min-height:100vh;
+      transition: background-color .45s ease, color .45s ease;
+    }
+
+    h1{
+      margin:14px 0 4px;
+      font-size:2.4rem;
+      text-align:center;
+      z-index:5;
+    }
+
+    .subtitle{
+      margin:0 0 14px;
+      color:var(--muted);
+      font-weight:600;
+      text-align:center;
+      z-index:5;
+    }
+
+    /* ======================
+       Start screen (two-step)
+       ====================== */
+    .start-screen{
+      position:fixed;
+      inset:0;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      background:var(--bg);
+      color:var(--text);
+      z-index:150;
+      transition: transform .6s ease, opacity .5s ease;
+    }
+
+    .start-screen input,
+    .start-screen select{
+      width:280px;
+      padding:11px 12px;
+      border-radius:10px;
+      border:1px solid var(--tile-border);
+      font-size:1rem;
+      text-align:center;
+      outline:none;
+      background:var(--bg);
+      color:var(--text);
+      margin-top:6px;
+    }
+
+    .start-screen button{
+      margin-top:10px;
+      padding:10px 26px;
+      border-radius:12px;
+      border:none;
+      background:var(--button);
+      color:#fff;
+      cursor:pointer;
+      font-weight:700;
+      transition: transform .18s ease, background .2s;
+    }
+
+    .start-screen button:hover{
+      transform:translateY(-2px);
+      background:var(--button-hover);
+    }
+
+    .start-screen.slide-up{
+      transform: translateY(-140%);
+      opacity:0;
+    }
+
+    /* ======================
+       Game grid and tiles
+       ====================== */
+    .grid{
+      display:grid;
+      grid-template-columns: repeat(5,64px);
+      gap:10px;
+      margin-top:20px;
+      z-index:50;
+    }
+
+    .tile{
+      width:64px;
+      height:64px;
+      border-radius:12px;
+      border:2px solid var(--tile-border);
+      background:#fff;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      text-transform:uppercase;
+      font-weight:800;
+      font-size:1.4rem;
+      transition: all .22s ease;
+      color:var(--text);
+      box-shadow: 0 6px 14px rgba(0,0,0,0.04);
+    }
+
+    .tile.correct{ background-color:var(--tile-correct); color:#fff; }
+    .tile.present{ background-color:var(--tile-present); color:#333; }
+    .tile.absent{ background-color:var(--tile-absent); color:#6c757d; }
+
+    .tile.pop{
+      animation: popAnim 0.15s ease-in-out;
+    }
+
+    @keyframes popAnim{
+      0%{ transform:scale(1); }
+      50%{ transform:scale(1.3); }
+      100%{ transform:scale(1); }
+    }
+
+    /* ======================
+       Keyboard
+       ====================== */
+    .keyboard{
+      margin-top:30px;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:8px;
+      z-index:5;
+    }
+
+    .keyboard-row{
+      display:flex;
+      gap:6px;
+      justify-content:center;
+    }
+
+    .key{
+      padding:12px 14px;
+      background-color: var(--key-bg);
+      border:none;
+      border-radius:8px;
+      font-size:1rem;
+      font-weight:600;
+      cursor:pointer;
+      transition: background-color 0.2s, transform 0.1s;
+    }
+
+    .key:hover{
+      background-color: var(--key-hover);
+      transform: scale(1.05);
+    }
+
+    .key.special{
+      background-color: var(--special-key);
+      color: white;
+      font-weight: 700;
+    }
+
+    .message{
+      margin-top: 15px;
+      font-weight: 600;
+      color: #2d6a4f;
+    }
+
+    /* ======================
+       Player info banner
+       ====================== */
+    #playerInfo{
+      margin-bottom:12px;
+      font-weight:600;
+      color:var(--accent);
+      opacity:0;
+      transform:translateY(-20px);
+      transition:all .6s ease;
+    }
+
+    #playerInfo.show{
+      opacity:1;
+      transform:translateY(0);
+    }
+
+    #playerInfo.fadeOut{
+      opacity:0;
+      transform:translateY(-20px);
+      transition:all .8s ease;
+    }
+
+    /* ======================
+       Fireflies
+       ====================== */
+    #firefliesContainer{
+      position:fixed;
+      inset:0;
+      pointer-events:none;
+      z-index:10;
+    }
+
+    .firefly{
+      position:absolute;
+      width:8px;
+      height:8px;
+      border-radius:50%;
+      opacity:0.7;
+      animation: floatFirefly 6s ease-in-out infinite;
+      box-shadow: 0 0 15px #ffd166;
+      z-index: 1;
+    }
+
+    @keyframes floatFirefly{
+      0%   { transform: translate(0, 0);    opacity: 0.7; }
+      50%  { transform: translate(50px,-80px); opacity: 1; }
+      100% { transform: translate(-30px,-10px); opacity: 0.4; }
+    }
+
+    /* ======================
+       Top-right controls
+       ====================== */
+    #darkModeToggle{
+      position:fixed;
+      top:10px;
+      right:10px;
+      z-index:200;
+      padding:8px 12px;
+      border:none;
+      border-radius:8px;
+      background:var(--button);
+      color:#fff;
+      cursor:pointer;
+      font-weight:700;
+    }
+
+    #darkModeToggle:hover{ background:var(--button-hover); }
+
+    #leaderboardBtn{
+      position:fixed;
+      top:60px;
+      right:10px;
+      z-index:200;
+      padding:12px 28px;
+      font-size:1.05rem;
+      border-radius:14px;
+      border:none;
+      background:var(--button);
+      color:#fff;
+      cursor:pointer;
+      font-weight:700;
+      transition: transform .18s ease, background .2s;
+    }
+
+    #leaderboardBtn:hover{
+      transform:translateY(-2px);
+      background:var(--button-hover);
+    }
+
+    #shareBtn{
+      margin-top:10px;
+      padding:6px 12px;
+      border:none;
+      border-radius:8px;
+      background:var(--button);
+      color:#fff;
+      cursor:pointer;
+      font-weight:600;
+    }
+
+    #shareBtn:hover{ background:var(--button-hover); }
+
+    /* ======================
+       Leaderboard overlay
+       ====================== */
+    #leaderboardSection{
+      display:none;
+      position:fixed;
+      inset:0;
+      padding:20px;
+      overflow-y:auto;
+      background:var(--bg);
+      color:var(--text);
+      z-index:150;
+    }
+
+    #leaderboardList{
+      width:100%;
+      max-width:560px;
+      margin:12px auto 20px;
+      padding:0;
+      list-style:none;
+    }
+
+    #leaderboardList li{
+      display:flex;
+      justify-content:space-between;
+      padding:12px;
+      border-radius:10px;
+      background:var(--button);
+      color:#fff;
+      margin-bottom:10px;
+      font-weight:700;
+    }
+
+    #leaderboardList li.top3{ background:var(--accent); }
+
+    /* ======================
+       Share popup
+       ====================== */
+    #sharePopup{
+      position:fixed;
+      top:0;
+      left:0;
+      width:100%;
+      height:100%;
+      background:rgba(246,255,248,0.95);
+      color:var(--text);
+      display:none;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      z-index:300;
+      padding:20px;
+      box-sizing:border-box;
+      font-family:"Quicksand","Poppins",sans-serif;
+    }
+
+    #sharePopup h2{
+      margin-bottom:20px;
+      font-size:2rem;
+      text-align:center;
+    }
+
+    #sharePopup pre{
+      background:var(--tile-absent);
+      padding:20px;
+      border-radius:16px;
+      font-size:1.2rem;
+      text-align:center;
+      white-space:pre-wrap;
+      max-width:90%;
+      overflow-x:auto;
+    }
+
+    #sharePopup .btnRow{
+      display:flex;
+      gap:15px;
+      margin-top:15px;
+    }
+
+    #sharePopup button{
+      margin-top:15px;
+      border-radius:12px;
+      padding:12px 20px;
+      font-weight:700;
+      cursor:pointer;
+      font-size:1rem;
+    }
+
+    #sharePopup button:hover{
+      transform:scale(1.05);
+    }
+
+    /* ======================
+       Quote + ticker
+       ====================== */
+    #quoteSection{
+      margin-top:30px;
+      text-align:center;
+      font-style:italic;
+      color:var(--muted);
+      max-width:600px;
+      font-family:"Quicksand","Poppins",sans-serif;
+      line-height:1.5;
+    }
+
+    #scrollQuotes{
+      width:100%;
+      overflow:hidden;
+      white-space:nowrap;
+      border-top:2px solid var(--tile-border);
+      border-bottom:2px solid var(--tile-border);
+      background:var(--bg);
+      padding:10px 0;
+      box-sizing:border-box;
+      position:fixed;
+      bottom:0;
+      left:0;
+      z-index:120;
+    }
+
+    #scrollContent{
+      display:inline-block;
+      padding-left:100%;
+      animation: scrollQuotes 28s linear infinite;
+      font-family:"Quicksand","Poppins",sans-serif;
+      font-size:1.05rem;
+      color:var(--accent);
+    }
+
+    @keyframes scrollQuotes{
+      0%   { transform:translateX(0); }
+      100% { transform:translateX(-100%); }
+    }
+
+    /* ======================
+       Responsive tweaks
+       ====================== */
+    @media (max-width:500px){
+      .tile{ width:48px; height:48px; font-size:1.1rem; }
+      .keyboard-row button{ padding:10px 8px; }
+      #leaderboardBtn{ padding:10px 18px; top:70px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ======================
+       START SCREEN (two-step)
+       ====================== -->
+  <div class="start-screen" id="startScreen">
+    <h1>MIST Wordle</h1>
+    <p class="subtitle">
+      “Currents of Consequence” — where every guess ripples outward
+    </p>
+
+    <div id="page1">
+      <select id="playerRegion">
+        <option value="">All Regions</option>
+        <option>Atlanta</option>
+        <option>Northern California</option>
+        <option>Southern California</option>
+        <option>Carolina</option>
+        <option>Chicago</option>
+        <option>Columbus</option>
+        <option>Dallas</option>
+        <option>Detroit</option>
+        <option>Florida</option>
+        <option>Houston</option>
+        <option>Nashville</option>
+        <option>New Jersey</option>
+        <option>New York</option>
+        <option>Philadelphia</option>
+        <option>St. Louis</option>
+        <option>Toronto</option>
+        <option>Washington, DC</option>
+        <option>MIST Dream TEAM</option>
+      </select>
+
+      <input id="playerSchool" placeholder="Enter your school" />
+
+      <button onclick="nextPage()">
+        Next
+      </button>
+    </div>
+
+    <div id="page2" style="display:none;">
+      <input id="playerName" placeholder="Enter your name" />
+      <input
+        id="playerEmail"
+        type="email"
+        placeholder="Enter your email"
+      />
+      <button onclick="startGame()">
+        Start Game
+      </button>
+    </div>
+  </div>
+
+  <!-- ======================
+       MAIN GAME INTERFACE
+       ====================== -->
+  <h1>MIST Wordle</h1>
+
+  <div class="subtitle">
+    How well do you know this year's theme?
+  </div>
+
+  <div id="playerInfo"></div>
+
+  <div class="grid" id="grid"></div>
+
+  <div class="keyboard" id="keyboard"></div>
+
+  <div class="message" id="message"></div>
+
+  <button id="shareBtn" onclick="showSharePopup()">
+    Share Results
+  </button>
+
+  <button id="darkModeToggle">
+    🌙 Dark Mode
+  </button>
+
+  <button id="leaderboardBtn" onclick="showLeaderboard()">
+    🏆 Leaderboard
+  </button>
+
+  <div id="firefliesContainer"></div>
+
+  <!-- ======================
+       LEADERBOARD OVERLAY
+       ====================== -->
+  <div id="leaderboardSection">
+    <h1>🏆 MIST Wordle Leaderboard</h1>
+    <p class="subtitle">
+      Top players for your selected region 🌿
+    </p>
+    <ul id="leaderboardList"></ul>
+    <button onclick="hideLeaderboard()">
+      ⬅ Back to Game
+    </button>
+  </div>
+
+  <!-- ======================
+       SHARE POPUP
+       ====================== -->
+  <div id="sharePopup">
+    <h2>🌿 Your Result</h2>
+    <pre id="shareContent"></pre>
+    <div class="btnRow">
+      <button
+        onclick="copyShare()"
+        style="background:var(--accent); color:#fff;"
+      >
+        📋 Copy
+      </button>
+      <button
+        onclick="closeShare()"
+        style="background:#f4d35e; color:#333;"
+      >
+        ❌ Close
+      </button>
+    </div>
+  </div>
+
+  <!-- ======================
+       QUOTE & TICKER
+       ====================== -->
+  <div id="quoteSection">
+    🌱 "Small deeds ripple outward, shaping worlds in ways we cannot see."
+  </div>
+
+  <div id="scrollQuotes">
+    <div id="scrollContent">
+      🌱 "Small deeds ripple outward, shaping worlds in ways we cannot see."
+      🌿
+      🌸 "Every guess is a step in the journey of discovery."
+      🌱
+      🌿 "Grow with patience, bloom with purpose."
+      🌸
+      🌱 "Unity in thought, strength in action."
+      🌿
+      🌸 "Curiosity fuels learning, learning fuels growth."
+      🌱
+    </div>
+  </div>
+
+  <!-- ✅ Firebase setup (kept, with minimal additions for leaderboard) -->
+  <script type="module">
+    import {
+      initializeApp
+    } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
+
+    import {
+      getAnalytics
+    } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-analytics.js";
+
+    import {
+      getDatabase,
+      ref,
+      set,
+      get,
+      onValue,
+      push,
+      query,
+      orderByChild,
+      limitToFirst
+    } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDiMQTJ37RArcFmIHbfUJJ8LVQdvO9jF6M",
+      authDomain: "mist-wordle.firebaseapp.com",
+      projectId: "mist-wordle",
+      storageBucket: "mist-wordle.firebasestorage.app",
+      messagingSenderId: "79140529647",
+      appId: "1:79140529647:web:76cba3a9d24c0af9a3c21a",
+      measurementId: "G-Y89LZMK3VW"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
+
+    /* Use the default RTDB instance; keep the explicit URL for clarity. */
+    const db = getDatabase(
+      app,
+      "https://mist-wordle-default-rtdb.firebaseio.com/"
+    );
+
+    /* ------------------------------
+       Existing helpers from Code 1
+       ------------------------------ */
+    async function firebaseSaveGame(playerKey, data){
+      try{
+        await set(ref(db, `games/${playerKey}`), data);
+        return { ok: true };
+      }catch(err){
+        return { ok: false, error: err && err.message ? err.message : err };
+      }
+    }
+
+    async function firebaseLoadGame(playerKey){
+      try{
+        const snap = await get(ref(db, `games/${playerKey}`));
+        return {
+          ok: true,
+          value: snap.exists() ? snap.val() : null
+        };
+      }catch(err){
+        return { ok: false, error: err && err.message ? err.message : err };
+      }
+    }
+
+    function firebaseOnGame(playerKey, cb){
+      return onValue(ref(db, `games/${playerKey}`), snap => cb(snap.val()));
+    }
+
+    /* ------------------------------
+       New helpers for LEADERBOARD
+       ------------------------------ */
+
+    /* Add leaderboard entry under /leaderboard/<region>/<autoId> */
+    async function firebaseAddLeaderboard(region, entry){
+      try{
+        const listRef = ref(db, `leaderboard/${region}`);
+        await push(listRef, entry);
+        return { ok: true };
+      }catch(err){
+        return { ok:false, error: err && err.message ? err.message : err };
+      }
+    }
+
+    /* Fetch top N by score for the region (lower score is better). */
+    async function firebaseFetchLeaderboard(region, limitN){
+      try{
+        const q = query(
+          ref(db, `leaderboard/${region}`),
+          orderByChild("score"),
+          limitToFirst(limitN)
+        );
+        const snap = await get(q);
+        if(!snap.exists()){
+          return { ok:true, value: [] };
+        }
+        const raw = snap.val() || {};
+        /* Convert map to array with keys, keep insertion order by score. */
+        const arr = Object.keys(raw).map(k => ({
+          id: k,
+          ...raw[k]
+        }));
+        /* orderByChild('score') handles primary sort; add a stable tiebreaker */
+        arr.sort((a,b) => (a.score - b.score) || (b.when - a.when));
+        return { ok:true, value: arr };
+      }catch(err){
+        return { ok:false, error: err && err.message ? err.message : err };
+      }
+    }
+
+    /* Expose helpers globally for non-module script to call. */
+    window.firebaseSaveGame = firebaseSaveGame;
+    window.firebaseLoadGame = firebaseLoadGame;
+    window.firebaseOnGame  = firebaseOnGame;
+
+    window.firebaseAddLeaderboard   = firebaseAddLeaderboard;
+    window.firebaseFetchLeaderboard = firebaseFetchLeaderboard;
+  </script>
+
+  <!-- 🔽 Game logic and UI (merged with Code 2 features) -->
+  <script>
+    /* -------------------------
+       GAME DATA / SETUP
+       ------------------------- */
+    const words = [
+      "unity","faith","light","peace","dream","river","leaf","tiger",
+      "spark","hope","grace","bloom","shine","green","grow","flame",
+      "storm","calm","roots","ocean"
+    ];
+
+    const seed = new Date().toISOString().split("T")[0]; /* YYYY-MM-DD */
+    const dayNumber = parseInt(seed.replace(/-/g,""), 10);
+    const wordOfTheDay = words[dayNumber % words.length];
+
+    const rows = 6, cols = 5;
+    let currentRow = 0, currentCol = 0;
+
+    let guesses = Array(rows)
+      .fill()
+      .map(() => Array(cols).fill(""));
+
+    /* Player metadata used for saving results & leaderboard */
+    const player = { name:"", school:"", region:"", email:"" };
+
+    /* --- DOM refs --- */
+    const grid = document.getElementById("grid");
+    const keyboard = document.getElementById("keyboard");
+    const message = document.getElementById("message");
+    const startScreen = document.getElementById("startScreen");
+    const playerInfo = document.getElementById("playerInfo");
+    const firefliesContainer = document.getElementById("firefliesContainer");
+
+    /* -------------------------
+       BUILD GRID
+       ------------------------- */
+    for (let r = 0; r < rows; r++){
+      for (let c = 0; c < cols; c++){
+        const tile = document.createElement("div");
+        tile.classList.add("tile");
+        tile.id = `tile-${r}-${c}`;
+        grid.appendChild(tile);
+      }
+    }
+
+    /* -------------------------
+       BUILD KEYBOARD
+       ------------------------- */
+    const layout = [
+      "QWERTYUIOP".split(""),
+      "ASDFGHJKL".split(""),
+      ["Enter", ..."ZXCVBNM".split(""), "Backspace"]
+    ];
+
+    layout.forEach(row => {
+      const rowDiv = document.createElement("div");
+      rowDiv.classList.add("keyboard-row");
+
+      row.forEach(k => {
+        const key = document.createElement("button");
+        key.textContent = k;
+        key.classList.add("key");
+        if (k === "Enter" || k === "Backspace"){
+          key.classList.add("special");
+        }
+        key.addEventListener("click", () => handleKey(k));
+        rowDiv.appendChild(key);
+      });
+
+      keyboard.appendChild(rowDiv);
+    });
+
+    /* Physical keyboard support */
+    document.addEventListener("keydown", e => {
+      if (e.key === "Backspace"){
+        handleKey("Backspace");
+      } else if (e.key === "Enter"){
+        handleKey("Enter");
+      } else if (/^[a-zA-Z]$/.test(e.key)){
+        handleKey(e.key.toUpperCase());
+      }
+    });
+
+    /* -------------------------
+       INPUT HANDLERS
+       ------------------------- */
+    function handleKey(key){
+      if (/^[a-zA-Z]$/.test(key) && currentCol < cols){
+        guesses[currentRow][currentCol] = key.toLowerCase();
+        updateTiles();
+        currentCol++;
+      } else if (key === "Backspace" && currentCol > 0){
+        currentCol--;
+        guesses[currentRow][currentCol] = "";
+        updateTiles();
+      } else if (key === "Enter"){
+        checkGuess();
+      }
+    }
+
+    function updateTiles(){
+      for (let c = 0; c < cols; c++){
+        const tile = document.getElementById(`tile-${currentRow}-${c}`);
+        tile.textContent = guesses[currentRow][c];
+        if (guesses[currentRow][c] !== ""){
+          tile.classList.add("pop");
+          setTimeout(() => tile.classList.remove("pop"), 150);
+        }
+      }
+    }
+
+    function checkGuess(){
+      if (currentCol < cols){
+        message.textContent = "🌱 Type a full 5-letter word!";
+        return;
+      }
+
+      const guess = guesses[currentRow].join("");
+
+      for (let c = 0; c < cols; c++){
+        const tile = document.getElementById(`tile-${currentRow}-${c}`);
+        tile.classList.remove("correct","present","absent");
+        const letter = guess[c].toLowerCase();
+        if (letter === wordOfTheDay[c]){
+          tile.classList.add("correct");
+        } else if (wordOfTheDay.includes(letter)){
+          tile.classList.add("present");
+        } else {
+          tile.classList.add("absent");
+        }
+      }
+
+      if (guess.toLowerCase() === wordOfTheDay){
+        message.textContent = "🌿 Beautiful! You guessed it!";
+        fadePlayerInfo();
+        confettiAnimation();
+        saveResult(true);  /* win */
+      } else if (++currentRow >= rows){
+        message.textContent =
+          `🌊 The word was ${wordOfTheDay.toUpperCase()}`;
+        fadePlayerInfo();
+        saveResult(false); /* loss */
+      } else {
+        currentCol = 0;
+      }
+    }
+
+    /* -------------------------
+       START SCREEN FLOW
+       ------------------------- */
+    function nextPage(){
+      document.getElementById("page1").style.display = "none";
+      document.getElementById("page2").style.display = "flex";
+    }
+
+    function startGame(){
+      const nameEl   = document.getElementById("playerName");
+      const schoolEl = document.getElementById("playerSchool");
+      const regionEl = document.getElementById("playerRegion");
+      const emailEl  = document.getElementById("playerEmail");
+
+      const name   = (nameEl.value   || "").trim();
+      const school = (schoolEl.value || "").trim();
+      const region = (regionEl.value || "").trim();
+      const email  = (emailEl.value  || "").trim().toLowerCase();
+
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+      if (!name || !school || !region || !email){
+        alert("Please fill all fields 🌿");
+        return;
+      }
+      if (!emailRegex.test(email)){
+        alert("Please enter a valid email 🌿");
+        return;
+      }
+
+      /* Optional local one-play-per-email/day guard */
+      const playedKey = `played_${email}`;
+      const played = localStorage.getItem(playedKey);
+      if (played === seed){
+        alert("You already played today 🌿");
+        return;
+      }
+
+      player.name   = name;
+      player.school = school;
+      player.region = region;
+      player.email  = email;
+
+      startScreen.style.display = "none";
+      message.textContent = "";
+
+      guesses = Array(rows)
+        .fill()
+        .map(() => Array(cols).fill(""));
+      currentRow = 0;
+      currentCol = 0;
+
+      grid.querySelectorAll(".tile").forEach(tile => {
+        tile.textContent = "";
+        tile.classList.remove("correct","present","absent");
+      });
+
+      playerInfo.textContent =
+        `Player: ${player.name}  |  School: ${player.school}  |  Region: ${player.region}`;
+      playerInfo.classList.remove("fadeOut");
+      playerInfo.classList.add("show");
+    }
+
+    /* -------------------------
+       Player info fade
+       ------------------------- */
+    function fadePlayerInfo(){
+      playerInfo.classList.remove("show");
+      playerInfo.classList.add("fadeOut");
+    }
+
+    /* -------------------------
+       SHARE POPUP
+       ------------------------- */
+    function showSharePopup(){
+      let output = "";
+      for (let r = 0; r < rows; r++){
+        for (let c = 0; c < cols; c++){
+          const tile = document.getElementById(`tile-${r}-${c}`);
+          if (!tile || tile.textContent === "") continue;
+          if (tile.classList.contains("correct")) output += "🟩";
+          else if (tile.classList.contains("present")) output += "🟨";
+          else output += "⬜";
+        }
+        if (output) output += "\n";
+      }
+      if (output === ""){
+        alert("No guesses yet!");
+        return;
+      }
+      document.getElementById("shareContent").textContent = output;
+      document.getElementById("sharePopup").style.display = "flex";
+    }
+
+    function copyShare(){
+      const text = document.getElementById("shareContent").textContent;
+      const finalText = `MIST Wordle 🌿\n${text}`;
+      navigator.clipboard
+        .writeText(finalText)
+        .then(() => alert("Copied to clipboard!"));
+    }
+
+    function closeShare(){
+      document.getElementById("sharePopup").style.display = "none";
+    }
+
+    /* -------------------------
+       LEADERBOARD (Firebase, by region)
+       ------------------------- */
+    async function showLeaderboard(){
+      const lb = document.getElementById("leaderboardSection");
+      lb.style.display = "flex";
+
+      grid.style.display = "none";
+      keyboard.style.display = "none";
+
+      /* Determine region filter:
+         - Prefer player's selected/started region.
+         - Else, take current selection on page1 (if still visible).
+         - Else, default to 'All Regions' (shows no entries here). */
+      let region = player.region;
+      if (!region){
+        const sel = document.getElementById("playerRegion");
+        if (sel) region = (sel.value || "").trim();
+      }
+
+      if (!region){
+        /* no region chosen yet */
+        document.getElementById("leaderboardList").innerHTML =
+          `<li style="background:transparent; color:var(--muted);">
+             Select a region on the start screen to view its leaderboard.
+           </li>`;
+        return;
+      }
+
+      /* Fetch top 20 by score for this region */
+      const res = await window.firebaseFetchLeaderboard(region, 20);
+      if (!res || !res.ok){
+        document.getElementById("leaderboardList").innerHTML =
+          `<li style="background:transparent; color:var(--muted);">
+             Failed to load leaderboard — try again later.
+           </li>`;
+        return;
+      }
+
+      const list = res.value || [];
+      if (!list.length){
+        document.getElementById("leaderboardList").innerHTML =
+          `<li style="background:transparent; color:var(--muted);">
+             No entries yet for ${escapeHtml(region)} — be the first!
+           </li>`;
+        return;
+      }
+
+      const html = list
+        .map((e, i) => {
+          const rankCls = (i < 3) ? "top3" : "";
+          const left    = `${i + 1}. ${escapeHtml(e.name)} — `
+                        + `${escapeHtml(e.region)}`;
+          const right   = `${e.score}`;
+          return (
+            `<li class="${rankCls}">
+               <span>${left}</span>
+               <span>${right}</span>
+             </li>`
+          );
+        })
+        .join("");
+
+      document.getElementById("leaderboardList").innerHTML = html;
+    }
+
+    function hideLeaderboard(){
+      document.getElementById("leaderboardSection").style.display = "none";
+      grid.style.display = "grid";
+      keyboard.style.display = "flex";
+    }
+
+    /* -------------------------
+       SAVE RESULT (game + leaderboard)
+       ------------------------- */
+    function saveResult(solved){
+      const playerKey = (
+        `${player.name.replace(/\s+/g, '_')}_${seed}`
+      );
+
+      const playedAt = new Date().toISOString();
+      const filledGuesses = guesses.map(row => row.join(''));
+      const attempts = solved ? (currentRow + 1) : rows;
+
+      const payload = {
+        player: {
+          name:   player.name,
+          school: player.school,
+          region: player.region,
+          email:  player.email
+        },
+        date:    seed,
+        playedAt,
+        word:    wordOfTheDay,
+        solved:  !!solved,
+        attempts,
+        guesses: filledGuesses
+      };
+
+      /* Mark local "played today" by email for UX parity. */
+      if (player.email){
+        const playedKey = `played_${player.email}`;
+        localStorage.setItem(playedKey, seed);
+      }
+
+      /* Save game record (original Code 1 behavior). */
+      if (window.firebaseSaveGame){
+        window.firebaseSaveGame(playerKey, payload).then(res => {
+          if (res && res.ok){
+            message.textContent += " — saved to cloud ✅";
+          }else{
+            console.warn('Firebase save error', res && res.error);
+            message.textContent += " — failed to save (see console)";
+          }
+        });
+      }else{
+        console.warn('firebaseSaveGame not available');
+        message.textContent += " — (offline: not saved)";
+      }
+
+      /* Also push to leaderboard by region. Lower score is better
+         (attempts if win; rows+1 if loss).
+      */
+      const score = solved ? (currentRow + 1) : (rows + 1);
+      const entry = {
+        name:   player.name || "Anonymous",
+        region: player.region || "Unknown",
+        score:  score,
+        when:   Date.now()
+      };
+
+      if (player.region && window.firebaseAddLeaderboard){
+        window.firebaseAddLeaderboard(player.region, entry).then(res => {
+          if (!res || !res.ok){
+            console.warn('Leaderboard write error', res && res.error);
+          }
+        });
+      }
+    }
+
+    /* -------------------------
+       Dark mode toggle
+       ------------------------- */
+    document
+      .getElementById("darkModeToggle")
+      .addEventListener("click", function(){
+        const root = document.documentElement;
+        const isDark = root.dataset.theme === "dark";
+        root.dataset.theme = isDark ? "" : "dark";
+        this.textContent = isDark ? "🌙 Dark Mode" : "☀️ Light Mode";
+        createFireflies(30);
+      });
+
+    /* -------------------------
+       Fireflies (visual)
+       ------------------------- */
+    function createFireflies(count = 30){
+      firefliesContainer.innerHTML = "";
+      for (let i = 0; i < count; i++){
+        const f = document.createElement("div");
+        f.classList.add("firefly");
+        const size = Math.random() * 8 + 4;
+        f.style.width = size + "px";
+        f.style.height = size + "px";
+        f.style.left = (Math.random() * window.innerWidth) + "px";
+        f.style.top  = (Math.random() * window.innerHeight) + "px";
+        f.style.background = (
+          document.documentElement.dataset.theme === "dark"
+        ) ? "#74c69d" : "#ffd166";
+        firefliesContainer.appendChild(f);
+      }
+    }
+
+    createFireflies(30);
+
+    /* -------------------------
+       Confetti on win
+       ------------------------- */
+    function confettiAnimation(){
+      const colors = ["#ffd166","#06d6a0","#118ab2","#ef476f"];
+      const body = document.body;
+
+      for (let i = 0; i < 100; i++){
+        const conf = document.createElement("div");
+        const w = Math.random() * 10 + 6;
+        const h = Math.random() * 4 + 4;
+
+        conf.style.width  = w + "px";
+        conf.style.height = h + "px";
+        conf.style.background = colors[
+          Math.floor(Math.random() * colors.length)
+        ];
+
+        conf.style.position = "absolute";
+        conf.style.top  = "0px";
+        conf.style.left = (Math.random() * window.innerWidth) + "px";
+        conf.style.borderRadius = "2px";
+        conf.style.opacity = 0.9;
+        conf.style.pointerEvents = "none";
+        conf.style.transform = `rotate(${Math.random()*360}deg)`;
+        conf.style.transition =
+          "transform 2s linear, top 2s linear, opacity 2s linear";
+
+        body.appendChild(conf);
+
+        setTimeout(() => {
+          conf.style.top = window.innerHeight + "px";
+          conf.style.transform = `rotate(${Math.random()*720}deg)`;
+          conf.style.opacity = 0;
+        }, 50);
+
+        setTimeout(() => {
+          if (conf && conf.parentNode === body){
+            body.removeChild(conf);
+          }
+        }, 2100);
+      }
+    }
+
+    /* -------------------------
+       Helpers
+       ------------------------- */
+    function escapeHtml(str){
+      return String(str).replace(
+        /[&<>"']/g,
+        s => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;',
+                '"':'&quot;', "'":'&#39;' }[s])
+      );
+    }
+
+    /* Prevent text selection (nicer UX) */
+    document.addEventListener('selectstart', e => e.preventDefault());
+  </script>
+
+</body>
+</html>
